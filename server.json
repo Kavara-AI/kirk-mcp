@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.UlyssesModel/kirk-mcp",
   "title": "Kirk — Unsupervised Structural Change Detection",
-  "description": "Kirk is the first algorithm on Ulysses — an algorithmic primitive that computes the complete pairwise structure of a system in real time, unsupervised, on a CPU. Signals the moment structure breaks. The Kalman filter for the non-Gaussian, non-stationary world. First 100 inference units free per new account.",
+  "description": "The first algorithm on Ulysses: unsupervised structural change detection, real-time, on a CPU.",
   "version": "1.0.1",
   "repository": {
     "url": "https://github.com/UlyssesModel/kirk-mcp",
