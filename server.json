@@ -1,0 +1,70 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/docs/reference/server-json.schema.json",
+  "name": "UlyssesModel/kirk-mcp",
+  "displayName": "Kirk — Density-Operator Engine",
+  "description": "Sealed density-operator ML engine for cross-section entropy scoring on financial data. Validated bit-exact against QuantBot FY24 top-512 golden across 252 trading days. First 100 inference units free per new account.",
+  "publisher": {
+    "name": "Kavara",
+    "url": "https://kavara.ai"
+  },
+  "version": "1.0.0",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UlyssesModel/kirk-mcp"
+  },
+  "homepage": "https://kavara.ai",
+  "endpoint": {
+    "url": "https://kirk-mcp.kavara.ai/mcp",
+    "transport": "streamable-http"
+  },
+  "authentication": {
+    "type": "service-token",
+    "provider": "cloudflare-access",
+    "notes": "Service token via Cloudflare Access headers CF-Access-Client-Id and CF-Access-Client-Secret. First 100 inference units free per new account — contact sales@kavara.ai for token provisioning."
+  },
+  "categories": [
+    "ai-ml",
+    "financial-data",
+    "signal-processing",
+    "data-science"
+  ],
+  "tags": [
+    "density-operator",
+    "entropy",
+    "regime-detection",
+    "cross-section-scoring",
+    "sealed-engine",
+    "cryptographic-attestation",
+    "deterministic-inference",
+    "l2-order-book",
+    "quantitative-finance"
+  ],
+  "documentation": "https://github.com/UlyssesModel/kirk-mcp/blob/main/README.md",
+  "support": {
+    "email": "sales@kavara.ai",
+    "url": "https://kavara.ai"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": false
+  },
+  "toolCount": 12,
+  "resourceCount": 1,
+  "logo": "https://raw.githubusercontent.com/UlyssesModel/kirk-mcp/main/assets/kirk-logo-512.png",
+  "examples": [
+    {
+      "title": "Score one order-book snapshot",
+      "prompt": "Use kirk_score_book to score a snapshot with bid/ask prices against model kirk-qb-trial-v1"
+    },
+    {
+      "title": "Bulk score without burning LLM tokens",
+      "prompt": "Call kirk_bulk_howto first to get a Python client, then run scoring locally at zero LLM-token cost per iteration"
+    },
+    {
+      "title": "Verify engine identity",
+      "prompt": "Call kirk_healthz to verify the sealed engine sha matches Kavara's published manifest"
+    }
+  ]
+}
