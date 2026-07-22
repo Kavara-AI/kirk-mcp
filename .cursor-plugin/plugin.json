@@ -1,0 +1,11 @@
+{
+  "name": "kavara-kirk",
+  "displayName": "Kavara Kirk",
+  "author": "Kavara, Inc.",
+  "description": "Structural change detection on raw, unlabeled data. CPU-only. No training. First algorithm in the Ulysses family — a Kalman filter for the non-Gaussian, non-stationary world.",
+  "keywords": ["mcp", "finance", "structural-change", "unsupervised", "confidential-compute", "cpu-inference"],
+  "license": "Apache-2.0",
+  "version": "1.0.2",
+  "homepage": "https://kavara.ai",
+  "repository": "https://github.com/UlyssesModel/kirk-mcp"
+}
