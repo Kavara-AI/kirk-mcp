@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "kavara-kirk": {
+      "url": "https://kirk-mcp.kavara.ai/mcp"
+    }
+  }
+}
