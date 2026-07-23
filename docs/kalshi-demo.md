@@ -1,5 +1,7 @@
 # Kalshi DEMO-only client
 
+> **Status — unconfirmed candidate, do not run.** The credential-store integration (macOS Keychain) and the deployment target are unconfirmed pending separate Jira evidence; macOS Keychain is not an approved or deployment-ready store for this path. Until separately authorized evidence confirms the target and store, no credentials should be requested, created, rotated, copied, installed, or accessed, and neither the installer nor the authenticated smoke check should be run. The sections below document only a local candidate design, not an operator runbook.
+
 This integration is exclusively for the captain's personal Kalshi simulated **DEMO** environment. It must not be configured with, or used to infer anything about, a production account. It is not a Kavara corporate account or identity: Kavara technology is authorized only for this bounded personal evaluation. Personal account data and credentials must remain segregated from corporate identities, credential stores, profiles, and systems. DEMO fills and data are not live-market evidence. The current workflow cannot place or cancel orders: it makes one authenticated, read-only account request and discards the response body.
 
 This is the connectivity/setup stage of **Project Cash in Hand**, whose later personal paper-trading evaluation will test the hypothesis—not promise—that a strategy could contribute toward an aspirational `$500/day` target. Any later evaluation must report net results after fees, spread, slippage, partial fills, and data/compute costs, together with drawdown, capital at risk, liquidity, variance, losing days, and sample size. None of that evaluation or any order workflow is part of this smoke check.
@@ -16,21 +18,21 @@ Verified against Kalshi's official documentation on 2026-03-19:
 
 The client requires all three personal-DEMO configuration values explicitly, uses one exact host allowlist, rejects every conventional `KALSHI_*`, every shared/corporate `KIRK_KALSHI_*`, the corporate MCP credential variables, and every unknown `CASH_IN_HAND_KALSHI_*` variable, and has no default host.
 
-## Secure credential installation
+## Candidate credential installation (do not run yet)
 
-Requirements:
+This section documents the candidate installer's design only. Do not create a key, do not run the installer, and do not install or access any credential until separate Jira evidence confirms the deployment target and credential store. The candidate depends on these Python requirements:
 
 ```bash
 python3 -m pip install -r requirements-kalshi-demo.txt
 ```
 
-Create the key only in the captain's existing personal Kalshi **demo** account. Never supply a production or corporate key. From the repository root, perform the required interactive installation directly into the captain's local macOS Keychain:
+When later authorized, the candidate design would create the key only in the captain's existing personal Kalshi **demo** account, never a production or corporate key, and perform an interactive installation into the captain's local macOS Keychain:
 
 ```bash
 python3 -m kirk_mcp.install_kalshi_demo_credentials --private-key-file /absolute/path/to/downloaded-demo.key
 ```
 
-The command first requires the explicit text confirmation `PERSONAL DEMO`, then prompts invisibly for the DEMO API key ID and transfers the private key file into Keychain through macOS Security.framework without putting either credential value in subprocess arguments or output. It never asks for or stores the captain's exact Kalshi login identifier. It creates only these fixed personal-role entries:
+The candidate command first requires the explicit text confirmation `PERSONAL DEMO`, then prompts invisibly for the DEMO API key ID and transfers the private key file into Keychain through macOS Security.framework without putting either credential value in subprocess arguments or output. It pre-checks both fixed services and installs all-or-nothing, rolling back any partial entry on failure. It never asks for or stores the captain's exact Kalshi login identifier. It would create only these fixed personal-role entries:
 
 | Keychain field | Identifier |
 |---|---|
@@ -40,9 +42,9 @@ The command first requires the explicit text confirmation `PERSONAL DEMO`, then 
 
 Keep key material outside this repository and remove the downloaded source key securely after installation. Do not put credentials in environment variables, command-line arguments, config files, logs, prompt text, fixtures, or snapshots; enter the API key ID only through the installer's hidden interactive input.
 
-## No-order connectivity/account-status smoke
+## No-order connectivity/account-status smoke (do not run yet)
 
-Run only this explicit DEMO profile, using a clean process environment so corporate credentials are not inherited:
+This authenticated smoke check must not be run until separate Jira evidence confirms the target and store. When later authorized, the candidate design would run only this explicit DEMO profile, using a clean process environment so corporate credentials are not inherited:
 
 ```bash
 env -i HOME="$HOME" PATH="$PATH" \

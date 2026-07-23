@@ -24,6 +24,7 @@ from kirk_mcp.kalshi_demo import (
 
 _SECURITY_FRAMEWORK = "/System/Library/Frameworks/Security.framework/Security"
 _DUPLICATE_ITEM = -25299
+_ITEM_NOT_FOUND = -25300
 
 
 def _add_generic_password(service: str, secret: bytes) -> int:
@@ -60,6 +61,51 @@ def _add_generic_password(service: str, secret: bytes) -> int:
     )
 
 
+def _find_generic_password(service: str, item_ref: Optional[ctypes.c_void_p] = None) -> int:
+    security = ctypes.CDLL(_SECURITY_FRAMEWORK)
+    find_password = security.SecKeychainFindGenericPassword
+    find_password.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    ]
+    find_password.restype = ctypes.c_int32
+
+    service_bytes = service.encode("utf-8")
+    account_bytes = KEYCHAIN_ACCOUNT.encode("utf-8")
+    service_buffer = ctypes.create_string_buffer(service_bytes)
+    account_buffer = ctypes.create_string_buffer(account_bytes)
+    return int(
+        find_password(
+            None,
+            len(service_bytes),
+            ctypes.cast(service_buffer, ctypes.c_void_p),
+            len(account_bytes),
+            ctypes.cast(account_buffer, ctypes.c_void_p),
+            None,
+            None,
+            ctypes.byref(item_ref) if item_ref is not None else None,
+        )
+    )
+
+
+def _delete_generic_password(service: str) -> int:
+    security = ctypes.CDLL(_SECURITY_FRAMEWORK)
+    item_ref = ctypes.c_void_p()
+    status = _find_generic_password(service, item_ref)
+    if status != 0:
+        return status
+    delete_item = security.SecKeychainItemDelete
+    delete_item.argtypes = [ctypes.c_void_p]
+    delete_item.restype = ctypes.c_int32
+    return int(delete_item(item_ref))
+
+
 def _validate_private_key(pem: bytes) -> None:
     try:
         key = serialization.load_pem_private_key(pem, password=None)
@@ -82,7 +128,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if sys.platform != "darwin":
-        parser.error("the approved credential store for this path is macOS Keychain")
+        parser.error("this local candidate installer runs only on macOS; its candidate credential store is macOS Keychain")
 
     confirmation = input(
         "Type PERSONAL DEMO to confirm this is the captain's personal demo account (never live/corporate): "
@@ -103,22 +149,42 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         (KEYCHAIN_API_KEY_SERVICE, key_id.encode("utf-8")),
         (KEYCHAIN_PRIVATE_KEY_SERVICE, private_key_pem),
     )
-    for service, secret in entries:
-        status = _add_generic_password(service, secret)
-        if status == _DUPLICATE_ITEM:
+
+    for service, _ in entries:
+        status = _find_generic_password(service)
+        if status == 0:
             print(
-                "DEMO Keychain entry already exists: %s; remove that fixed entry explicitly before reinstalling"
+                "DEMO Keychain entry already exists: %s; remove every fixed entry explicitly before reinstalling"
                 % service,
                 file=sys.stderr,
             )
             return 1
-        if status != 0:
+        if status != _ITEM_NOT_FOUND:
             print(
-                "DEMO Keychain installation failed for entry %s (OSStatus %d); no credential value printed"
+                "DEMO Keychain lookup failed for entry %s (OSStatus %d); no credential value printed"
                 % (service, status),
                 file=sys.stderr,
             )
             return 1
+
+    installed = []
+    for service, secret in entries:
+        status = _add_generic_password(service, secret)
+        if status != 0:
+            for done in installed:
+                _delete_generic_password(done)
+            detail = (
+                "another entry appeared concurrently"
+                if status == _DUPLICATE_ITEM
+                else "OSStatus %d" % status
+            )
+            print(
+                "DEMO Keychain installation failed for entry %s (%s); no credential value printed and any partial entry was rolled back"
+                % (service, detail),
+                file=sys.stderr,
+            )
+            return 1
+        installed.append(service)
 
     print("Installed personal Kalshi DEMO credentials in macOS Keychain.")
     print("account role label (not a login identifier): " + KEYCHAIN_ACCOUNT)
