@@ -37,6 +37,8 @@ Add this to your MCP client's config:
 
 For per-client configuration templates see [`examples/`](./examples).
 
+A separate, strictly read-only personal Kalshi simulated-environment setup for the bounded Project Cash in Hand evaluation is documented in [Kalshi DEMO-only client](./docs/kalshi-demo.md). It is not a Kavara corporate account path and has no live-account or order access.
+
 ---
 
 ## What most machine learning does today, and what Kirk does instead
