@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.UlyssesModel/kirk-mcp",
+  "title": "Kirk \u2014 Unsupervised Structural Change Detection",
+  "description": "The Kalman filter for the non-Gaussian, non-stationary world. Unsupervised structural change.",
+  "version": "1.0.2",
+  "repository": {
+    "url": "https://github.com/UlyssesModel/kirk-mcp",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://kirk-mcp.kavara.ai/mcp",
+      "headers": [
+        {
+          "name": "CF-Access-Client-Id",
+          "description": "Cloudflare Access service token ID (contact sales@kavara.ai for provisioning; first 100 IU free per new account)",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "CF-Access-Client-Secret",
+          "description": "Cloudflare Access service token secret (contact sales@kavara.ai for provisioning)",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

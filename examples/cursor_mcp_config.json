@@ -1,0 +1,12 @@
+{
+  "_comment": "Add this to Cursor's MCP configuration. Cursor Settings > MCP > Add server. Cursor typically supports streamable-http transport. Replace YOUR_SERVICE_TOKEN_ID and YOUR_SERVICE_TOKEN_SECRET with credentials from sales@kavara.ai.",
+  "mcpServers": {
+    "kirk": {
+      "url": "https://kirk-mcp.kavara.ai/mcp",
+      "headers": {
+        "CF-Access-Client-Id": "YOUR_SERVICE_TOKEN_ID",
+        "CF-Access-Client-Secret": "YOUR_SERVICE_TOKEN_SECRET"
+      }
+    }
+  }
+}
