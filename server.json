@@ -1,11 +1,11 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.UlyssesModel/kirk-mcp",
-  "title": "Kirk \u2014 Unsupervised Structural Change Detection",
+  "title": "Kirk — Unsupervised Structural Change Detection",
   "description": "The Kalman filter for the non-Gaussian, non-stationary world. Unsupervised structural change.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "repository": {
-    "url": "https://github.com/UlyssesModel/kirk-mcp",
+    "url": "https://github.com/Kavara-AI/kirk-mcp",
     "source": "github"
   },
   "remotes": [
@@ -14,15 +14,21 @@
       "url": "https://kirk-mcp.kavara.ai/mcp",
       "headers": [
         {
+          "name": "Authorization",
+          "description": "Personal key as a bearer token: 'Bearer k_...'. The usual method. Supply either this header or the CF-Access-Client-Id/Secret pair - exactly one authentication method is required. Contact sales@kavara.ai to be issued a key; first 100 IU free per new account.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
           "name": "CF-Access-Client-Id",
-          "description": "Cloudflare Access service token ID (contact sales@kavara.ai for provisioning; first 100 IU free per new account)",
-          "isRequired": true,
+          "description": "Cloudflare Access service token ID (one authentication method is required; supply either this pair or Authorization)",
+          "isRequired": false,
           "isSecret": true
         },
         {
           "name": "CF-Access-Client-Secret",
-          "description": "Cloudflare Access service token secret (contact sales@kavara.ai for provisioning)",
-          "isRequired": true,
+          "description": "Cloudflare Access service token secret (contact sales@kavara.ai for provisioning) (alternative: Authorization: Bearer k_...)",
+          "isRequired": false,
           "isSecret": true
         }
       ]

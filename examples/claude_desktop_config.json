@@ -1,13 +1,12 @@
 {
-  "_comment": "Add this to your Claude Desktop MCP configuration file. Location: macOS ~/Library/Application Support/Claude/claude_desktop_config.json, Windows %APPDATA%/Claude/claude_desktop_config.json. Replace YOUR_SERVICE_TOKEN_ID and YOUR_SERVICE_TOKEN_SECRET with credentials from sales@kavara.ai. First 100 IU free per new account.",
+  "_comment": "Claude Desktop. Config file: macOS ~/Library/Application Support/Claude/claude_desktop_config.json, Windows %APPDATA%/Claude/claude_desktop_config.json. Replace k_YOUR_PERSONAL_KEY with the key issued to you. If you hold a service-token pair instead, swap the Authorization header for CF-Access-Client-Id and CF-Access-Client-Secret. The Add-custom-connector dialog takes a URL and no headers - there, paste https://kirk-mcp.kavara.ai/mcp/k_YOUR_PERSONAL_KEY instead.",
   "mcpServers": {
     "kirk": {
       "transport": {
         "type": "streamable-http",
         "url": "https://kirk-mcp.kavara.ai/mcp",
         "headers": {
-          "CF-Access-Client-Id": "YOUR_SERVICE_TOKEN_ID",
-          "CF-Access-Client-Secret": "YOUR_SERVICE_TOKEN_SECRET"
+          "Authorization": "Bearer k_YOUR_PERSONAL_KEY"
         }
       }
     }

@@ -16,13 +16,51 @@ The Kalman filter is a special case: linear, Gaussian. Ulysses closes the full-j
 
 ## Quick start
 
-Add this to your MCP client's config:
+You need a credential. Kavara issues one of two kinds — **use whichever you were given**:
+
+| You were given | Use this |
+| --- | --- |
+| A URL like `https://kirk-mcp.kavara.ai/mcp/k_...` | **Personal key.** Works as a URL *or* as a header. |
+| A client ID and secret pair | **Service token.** Header only. |
+
+Most clients are configured with a personal key. It is the same key either way —
+as a header it stays out of shell history, process listings and request logs, so
+prefer the header form wherever your client supports headers.
+
+**Personal key, as a header** (recommended):
 
 ```json
 {
   "mcpServers": {
     "kirk": {
-      "transport": "streamable-http",
+      "url": "https://kirk-mcp.kavara.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer k_YOUR_PERSONAL_KEY"
+      }
+    }
+  }
+}
+```
+
+**Personal key, as a URL** — for clients that accept only a URL (the Claude Desktop
+and claude.ai connector dialogs, for example):
+
+```json
+{
+  "mcpServers": {
+    "kirk": {
+      "url": "https://kirk-mcp.kavara.ai/mcp/k_YOUR_PERSONAL_KEY"
+    }
+  }
+}
+```
+
+**Service token**, if that is what you hold:
+
+```json
+{
+  "mcpServers": {
+    "kirk": {
       "url": "https://kirk-mcp.kavara.ai/mcp",
       "headers": {
         "CF-Access-Client-Id": "YOUR_SERVICE_TOKEN_ID",
@@ -33,11 +71,39 @@ Add this to your MCP client's config:
 }
 ```
 
-**First 100 inference units are free per new account.** Contact `sales@kavara.ai` for service token provisioning.
+Command-line clients that take flags rather than JSON, such as Claude Code:
 
-For per-client configuration templates see [`examples/`](./examples).
+```sh
+claude mcp add --transport http kirk https://kirk-mcp.kavara.ai/mcp \
+  -H "Authorization: Bearer k_YOUR_PERSONAL_KEY"
+```
 
----
+**First 100 inference units are free per new account.** Contact `sales@kavara.ai`
+to be issued a credential.
+
+### Check it worked
+
+Ask your client to call `kirk_verify_engine`. It costs nothing and returns
+`status: ok` plus the engine sha. Record that sha alongside any result you keep —
+results from different engine builds are not interchangeable.
+
+If a call fails, see [troubleshooting](#troubleshooting) before changing your
+credential; the most common failure is not a credential problem.
+
+For per-client templates see [`examples/`](./examples): Claude Desktop, Claude Code,
+Cursor, VS Code, Grok, a generic streamable-HTTP client, and a Python client.
+
+### Troubleshooting
+
+- **A 403 that looks like an authentication failure.** Often it is the
+  `User-Agent`. Cloudflare rejects some default client agents on this zone with a
+  1010 "browser signature banned" error that arrives as a 403. Set an explicit
+  `User-Agent` before you start debugging credentials.
+- **`URL key ... is unknown`.** The key was mistyped, or it has been revoked.
+  Keys are per person and are not shared; ask for a new one.
+- **A 402.** The account balance is exhausted. Call `kirk_billing_show`.
+- **A model listed by `kirk_list_models` that errors when called.** The catalogue
+  lists registered models; it is not a liveness check. Please report it.
 
 ## What most machine learning does today, and what Kirk does instead
 
