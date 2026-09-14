@@ -1,0 +1,95 @@
+# Publish server.json to the MCP Registry.
+#
+# WHY THIS EXISTS
+#   The registry is what MCP clients read when someone sets this server up. It is
+#   NOT this repository. On 2026-09-14 the two diverged: the repo carried an
+#   authentication fix while the registry still served an 8-week-old manifest that
+#   required a credential type we do not issue, so every client-discovered setup was
+#   broken. Publishing was a manual step nobody could see had not happened.
+#
+#   This runs whenever server.json reaches main, so the repo and the registry cannot
+#   drift silently again.
+#
+# THE STEP THAT MATTERS
+#   "Verify" at the end. A zero exit from `publish` is not evidence the registry
+#   serves the new version - that assumption is exactly what went unnoticed for two
+#   months. The job re-queries the live registry and fails if the version is not
+#   actually being served.
+
+name: Publish to MCP Registry
+
+on:
+  push:
+    branches: [main]
+    paths: ["server.json"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # required for OIDC authentication
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read intended version and name
+        id: intent
+        run: |
+          echo "name=$(jq -r .name server.json)"       >> "$GITHUB_OUTPUT"
+          echo "version=$(jq -r .version server.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Install mcp-publisher
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      # Fail on a malformed manifest before touching the registry, not after.
+      - name: Validate server.json
+        run: ./mcp-publisher validate
+
+      # A version already published is a no-op, not a failure. A workflow that goes
+      # red on a re-run is a workflow people learn to ignore.
+      - name: Skip if this version is already published
+        id: already
+        run: |
+          NAME='${{ steps.intent.outputs.name }}'
+          WANT='${{ steps.intent.outputs.version }}'
+          LIVE=$(curl -fsSL --max-time 30 \
+            "https://registry.modelcontextprotocol.io/v0/servers?search=$(jq -rn --arg n "$NAME" '$n|@uri')" \
+            | jq -r --arg n "$NAME" '.servers[]?|select(.server.name==$n)|.server.version')
+          echo "live versions: ${LIVE:-none}"
+          if printf '%s\n' "$LIVE" | grep -qx "$WANT"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$NAME $WANT is already published; nothing to do."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Authenticate to MCP Registry
+        if: steps.already.outputs.skip == 'false'
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish
+        if: steps.already.outputs.skip == 'false'
+        run: ./mcp-publisher publish
+
+      # The point of the whole job. `publish` exiting 0 is not proof the registry
+      # serves it; only reading the registry back is.
+      - name: Verify the registry actually serves it
+        if: steps.already.outputs.skip == 'false'
+        run: |
+          NAME='${{ steps.intent.outputs.name }}'
+          WANT='${{ steps.intent.outputs.version }}'
+          for attempt in 1 2 3 4 5; do
+            sleep $(( attempt * 5 ))
+            LIVE=$(curl -fsSL --max-time 30 \
+              "https://registry.modelcontextprotocol.io/v0/servers?search=$(jq -rn --arg n "$NAME" '$n|@uri')" \
+              | jq -r --arg n "$NAME" '.servers[]?|select(.server.name==$n)|.server.version')
+            echo "attempt $attempt - live versions: ${LIVE:-none}"
+            if printf '%s\n' "$LIVE" | grep -qx "$WANT"; then
+              echo "::notice::Verified: $NAME $WANT is live in the registry."
+              exit 0
+            fi
+          done
+          echo "::error::publish reported success but the registry does not serve $NAME $WANT."
+          exit 1
