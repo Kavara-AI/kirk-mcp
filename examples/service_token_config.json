@@ -1,0 +1,12 @@
+{
+  "_comment": "For holders of a Cloudflare Access service-token pair rather than a personal key. Same endpoint; header-only, there is no URL form. Note that with a service token the billing account is derived from the token id, so rotating the token moves you to a fresh account and any purchased balance stays with the old one. A personal key keeps the account stable across rotation, which is why it is the default.",
+  "mcpServers": {
+    "kirk": {
+      "url": "https://kirk-mcp.kavara.ai/mcp",
+      "headers": {
+        "CF-Access-Client-Id": "YOUR_SERVICE_TOKEN_ID",
+        "CF-Access-Client-Secret": "YOUR_SERVICE_TOKEN_SECRET"
+      }
+    }
+  }
+}

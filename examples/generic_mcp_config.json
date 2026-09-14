@@ -1,0 +1,11 @@
+{
+  "_comment": "Generic remote MCP server over streamable HTTP. Most clients accept this shape. Two variations exist in the wild and are worth trying if the first does not load: (1) the top-level key may be 'servers' rather than 'mcpServers'; (2) url and headers may need to sit inside a nested 'transport' object, as in the Claude Desktop template. The endpoint, the header and the auth semantics are identical in every case - only the surrounding JSON shape differs. If your client accepts only a URL and no headers, use https://kirk-mcp.kavara.ai/mcp/k_YOUR_PERSONAL_KEY instead.",
+  "mcpServers": {
+    "kirk": {
+      "url": "https://kirk-mcp.kavara.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer k_YOUR_PERSONAL_KEY"
+      }
+    }
+  }
+}
