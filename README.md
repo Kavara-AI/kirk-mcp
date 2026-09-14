@@ -16,6 +16,11 @@ The Kalman filter is a special case: linear, Gaussian. Ulysses closes the full-j
 
 ## Quick start
 
+**Fastest path: [paste this into your assistant](./SETUP.md)** and it will configure
+your client for you — Grok, Claude, Cursor, Copilot Chat, or any other MCP client.
+
+To configure by hand instead, read on.
+
 You need a credential. Kavara issues one of two kinds — **use whichever you were given**:
 
 | You were given | Use this |
