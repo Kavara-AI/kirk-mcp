@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.UlyssesModel/kirk-mcp",
+  "name": "io.github.Kavara-AI/kirk-mcp",
   "title": "Kirk — Unsupervised Structural Change Detection",
   "description": "The Kalman filter for the non-Gaussian, non-stationary world. Unsupervised structural change.",
   "version": "1.0.3",
