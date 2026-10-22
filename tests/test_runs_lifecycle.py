@@ -1,4 +1,4 @@
-"""Run lifecycle against a mock sealed HTTP API and the recorded fixture."""
+"""Run lifecycle against a mock public HTTP API and the recorded fixture."""
 
 import json
 import re

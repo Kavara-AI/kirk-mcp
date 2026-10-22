@@ -1,4 +1,4 @@
-"""Versioned run binding in front of the sealed HTTP API."""
+"""Versioned run binding in front of the public HTTP API."""
 
 from kirk_runs.contract import CONTRACT_VERSION
 from kirk_runs.service import RunService
