@@ -1,6 +1,7 @@
 """Submit, execute, retrieve, and stamp one run."""
 
 import copy
+import math
 import threading
 import uuid
 
@@ -24,6 +25,7 @@ class RunService(object):
         self._scorer = scorer
         self._runs = {}
         self._lock = threading.Lock()
+        self._guards = {}
 
     def submit(self, body):
         with self._lock:
@@ -32,41 +34,77 @@ class RunService(object):
             return _public_view(run)
 
     def execute(self, run_id):
-        with self._lock:
-            run = self._require(run_id)
-            if run["status"] == "succeeded":
-                return _public_view(run)
-            if run["status"] in _TERMINAL:
-                raise _stored_error(run)
+        with self._guard(run_id):
+            with self._lock:
+                run = self._require(run_id)
+                if run["status"] == "succeeded":
+                    return _public_view(run)
+                if run["status"] in _TERMINAL:
+                    raise _stored_error(run)
+                release_id = run["release_id"]
+                model_id = run["configuration"]["model_id"]
+                inputs = run["inputs"]
+                run["computing_release_ids"] = []
+                run["alignment"] = None
+                run["error"] = None
             try:
                 model_ids = self._scorer.catalog_model_ids()
             except RunsError as exc:
-                _fail(run, "failed", exc.public_error())
-                raise _stored_error(run)
-            if run["configuration"]["model_id"] not in model_ids:
-                _fail(run, "refused", {"code": "binding_refused", "field": "model_id"})
-                raise _stored_error(run)
+                raise self._settle(run, "failed", exc.public_error())
+            except Exception:
+                raise self._settle(run, "failed", {"code": "origin_unavailable"})
+            if model_id not in model_ids:
+                raise self._settle(
+                    run,
+                    "refused",
+                    {"code": "binding_refused", "field": "model_id"},
+                )
             held = []
-            for item in run["inputs"]:
+            release_ids = []
+            for item in inputs:
                 try:
-                    result = self._scorer.score(run["configuration"]["model_id"], item)
+                    result = self._scorer.score(model_id, item)
                 except RunsError as exc:
                     status = "partial" if held else "failed"
-                    _fail(run, status, exc.public_error())
-                    raise _stored_error(run)
-                run["computing_release_ids"].append(result.release_id)
+                    raise self._settle(run, status, exc.public_error())
+                except Exception:
+                    status = "partial" if held else "failed"
+                    raise self._settle(run, status, {"code": "origin_unavailable"})
+                release_ids.append(result.release_id)
                 try:
-                    stamp_references(run["release_id"], run["computing_release_ids"])
+                    stamp_references(release_id, release_ids)
                 except RunsError as exc:
-                    _fail(run, "failed", exc.public_error())
-                    raise _stored_error(run)
+                    raise self._settle(
+                        run,
+                        "failed",
+                        exc.public_error(),
+                        computing_release_ids=release_ids,
+                    )
                 held.append(result)
-            run["alignment"] = [
-                _alignment(index, result.value) for index, result in enumerate(held)
-            ]
-            run["status"] = "succeeded"
-            run["error"] = None
-            return _public_view(run)
+            with self._lock:
+                run["computing_release_ids"] = release_ids
+                run["alignment"] = [
+                    _alignment(index, item.value) for index, item in enumerate(held)
+                ]
+                run["status"] = "succeeded"
+                run["error"] = None
+                return _public_view(run)
+
+    def _guard(self, run_id):
+        with self._lock:
+            guard = self._guards.get(run_id)
+            if guard is None:
+                guard = threading.Lock()
+                self._guards[run_id] = guard
+            return guard
+
+    def _settle(self, run, status, error, computing_release_ids=None):
+        with self._lock:
+            run["status"] = status
+            run["error"] = error
+            run["alignment"] = None
+            run["computing_release_ids"] = list(computing_release_ids or [])
+            return _stored_error(run)
 
     def retrieve(self, run_id):
         with self._lock:
@@ -83,6 +121,8 @@ class RunService(object):
             if not isinstance(body, dict) or set(body) - {"inputs"}:
                 raise RunsError("invalid_request", 400)
             run = self._require(run_id)
+            if run["status"] in _TERMINAL and run["status"] != "succeeded":
+                raise _stored_error(run)
             if not run["computing_release_ids"]:
                 raise RunsError(
                     "not_executed",
@@ -139,6 +179,7 @@ def _admit(body):
     if not isinstance(inputs, list) or not inputs:
         raise RunsError("binding_refused", 422, {"field": "inputs"})
     copied_inputs = copy.deepcopy(inputs)
+    _reject_nonfinite(copied_inputs, "inputs")
     for item in copied_inputs:
         if not isinstance(item, dict):
             raise RunsError("binding_refused", 422, {"field": "inputs"})
@@ -185,12 +226,6 @@ def _alignment(index, value):
     return entry
 
 
-def _fail(run, status, error):
-    run["status"] = status
-    run["error"] = error
-    run["alignment"] = None
-
-
 def _public_view(run):
     reveal = run["status"] == "succeeded"
     body = {
@@ -210,11 +245,22 @@ def _public_view(run):
     return body
 
 
+def _reject_nonfinite(value, field):
+    if isinstance(value, float) and not math.isfinite(value):
+        raise RunsError("binding_refused", 422, {"field": field})
+    if isinstance(value, dict):
+        for item in value.values():
+            _reject_nonfinite(item, field)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_nonfinite(item, field)
+
+
 def _stamp_refusal(run, error):
     return {
         "contract_version": CONTRACT_VERSION,
         "run_id": run["run_id"],
-        "status": "failed",
+        "status": run["status"],
         "complete": False,
         "error": error,
         "binding": {
@@ -233,12 +279,18 @@ def _stored_error(run):
 
 def _http_status(run):
     code = (run["error"] or {}).get("code")
-    if run["status"] == "refused" or code == "binding_refused":
-        return 422
-    if code == "reference_mismatch":
+    if code in {"reference_mismatch", "not_executed"}:
         return 409
-    if code == "inputs_digest_mismatch":
+    if (
+        run["status"] == "refused"
+        or code == "binding_refused"
+        or code == "inputs_digest_mismatch"
+    ):
         return 422
-    if run["status"] in {"failed", "partial"}:
-        return 502
-    return 200
+    if code == "request_denied":
+        return 403
+    if code == "rate_limited":
+        return 429
+    if code == "request_too_large":
+        return 413
+    return 502

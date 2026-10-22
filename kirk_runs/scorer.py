@@ -70,8 +70,15 @@ class ApiScorer(object):
                 raw = response.read()
                 status = response.status
         except urllib.error.HTTPError as error:
-            raise RunsError("score_rejected", 502, {"upstream_status": error.code})
+            _discard(error)
+            if error.code in (401, 403):
+                raise RunsError("request_denied", 403)
+            if error.code == 429:
+                raise RunsError("rate_limited", 429)
+            raise RunsError("score_rejected", 502)
         except urllib.error.URLError:
+            raise RunsError("origin_unavailable", 502)
+        except (TimeoutError, OSError):
             raise RunsError("origin_unavailable", 502)
         if status != 200:
             raise RunsError("score_rejected", 502, {"upstream_status": status})
@@ -86,6 +93,13 @@ class ApiScorer(object):
         ):
             raise RunsError("unbound_result", 502)
         return payload["result"]
+
+
+def _discard(error):
+    try:
+        error.read()
+    except Exception:
+        return
 
 
 def _model_ids(result):

@@ -3,6 +3,7 @@
 import json
 import re
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import urllib.error
 import urllib.request
 
 from kirk_runs.binding import assert_same_inputs, inputs_digest, stamp_references
-from kirk_runs.contract import PUBLIC_API_ORIGIN
+from kirk_runs.contract import MAX_BODY_BYTES, PUBLIC_API_ORIGIN
 from kirk_runs.errors import RunsError
 from kirk_runs.http_api import handler_for
 from kirk_runs.scorer import ApiScorer
@@ -111,6 +112,7 @@ def test_wrong_reference_and_reordered_inputs_fail_distinctly(case_factory):
     )
     assert reordered.status == 422
     assert reordered.body["error"]["code"] == "inputs_digest_mismatch"
+    assert reordered.body["status"] == "succeeded"
     assert reordered.body["complete"] is False
     assert reordered.body["binding"]["output_alignment"] is None
     still = good.request("GET", "/v1/runs/%s" % created.body["run_id"])
@@ -188,6 +190,120 @@ def test_rejected_cadence_loader_and_model_do_not_score(case_factory):
     assert [call["path"] for call in case.upstream.calls] == ["/v1/models"]
 
 
+def test_timeout_on_second_input_fails_the_run(case_factory):
+    case = case_factory(hang_at=1, timeout=0.4)
+    created = case.request("POST", "/v1/runs", _submission())
+    failed = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert failed.status == 502
+    assert failed.body["error"]["code"] == "origin_unavailable"
+    assert failed.body["status"] == "partial"
+    assert failed.body["complete"] is False
+    assert failed.body["binding"]["output_alignment"] is None
+    assert "out-1" not in json.dumps(failed.body)
+    assert _score_calls(case) == len(FIXTURE["inputs"])
+
+
+def test_nonfinite_input_is_refused_at_submit(case_factory):
+    case = case_factory()
+    for value in (float("nan"), float("inf"), float("-inf")):
+        payload = _submission()
+        payload["inputs"] = [{"marker": value}]
+        refused = case.request("POST", "/v1/runs", payload)
+        assert refused.status == 422
+        assert refused.body["complete"] is False
+        assert refused.body["error"] == {"code": "binding_refused", "field": "inputs"}
+    assert case.upstream.calls == []
+
+
+def test_stamp_after_failure_is_not_http_200(case_factory):
+    case = case_factory(hang_at=1, timeout=0.4)
+    created = case.request("POST", "/v1/runs", _submission())
+    failed = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert failed.status == 502
+    stamped = case.request("POST", "/v1/runs/%s/stamp" % created.body["run_id"], {})
+    assert stamped.status == 502
+    assert stamped.body["complete"] is False
+    assert stamped.body["error"]["code"] == "origin_unavailable"
+    assert stamped.body["status"] == "partial"
+    assert stamped.body["binding"]["output_alignment"] is None
+
+
+def test_reexecute_after_failure_does_not_append(case_factory):
+    case = case_factory(hang_at=1, timeout=0.4)
+    created = case.request("POST", "/v1/runs", _submission())
+    failed = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert failed.status == 502
+    scored = _score_calls(case)
+    assert scored == len(FIXTURE["inputs"])
+    again = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert again.status == 502
+    assert again.body["status"] == "partial"
+    assert again.body["complete"] is False
+    assert again.body["binding"]["output_alignment"] is None
+    assert _score_calls(case) == scored
+
+
+def test_second_execute_of_completed_run_does_not_rescore(case_factory):
+    case = case_factory()
+    created = case.request("POST", "/v1/runs", _submission())
+    first = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert first.status == 200
+    scored = _score_calls(case)
+    assert scored == len(FIXTURE["inputs"])
+    second = case.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert second.status == 200
+    assert second.body == first.body
+    assert _score_calls(case) == scored
+
+
+def test_oversized_body_returns_413(case_factory):
+    case = case_factory()
+    payload = _submission()
+    payload["inputs"] = [{"marker": "x" * (MAX_BODY_BYTES + 1)}]
+    refused = case.request("POST", "/v1/runs", payload)
+    assert refused.status == 413
+    assert refused.body["complete"] is False
+    assert refused.body["error"]["code"] == "request_too_large"
+    assert case.upstream.calls == []
+
+
+def test_empty_inputs_return_422(case_factory):
+    case = case_factory()
+    payload = _submission()
+    payload["inputs"] = []
+    refused = case.request("POST", "/v1/runs", payload)
+    assert refused.status == 422
+    assert refused.body["complete"] is False
+    assert refused.body["error"] == {"code": "binding_refused", "field": "inputs"}
+    assert case.upstream.calls == []
+
+
+def test_upstream_denial_and_rate_limit_are_distinct(case_factory):
+    denied = case_factory(reject_status=401)
+    created = denied.request("POST", "/v1/runs", _submission())
+    response = denied.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert response.status == 403
+    assert response.body["error"]["code"] == "request_denied"
+    assert response.body["complete"] is False
+    assert response.body["status"] == "failed"
+
+    forbidden = case_factory(reject_status=403)
+    created = forbidden.request("POST", "/v1/runs", _submission())
+    response = forbidden.request(
+        "POST", "/v1/runs/%s/execution" % created.body["run_id"]
+    )
+    assert response.status == 403
+    assert response.body["error"]["code"] == "request_denied"
+
+    limited = case_factory(reject_status=429)
+    created = limited.request("POST", "/v1/runs", _submission())
+    response = limited.request("POST", "/v1/runs/%s/execution" % created.body["run_id"])
+    assert response.status == 429
+    assert response.body["error"]["code"] == "rate_limited"
+    assert response.body["complete"] is False
+    assert response.body["status"] == "failed"
+
+
 def test_unversioned_route_is_refused(case_factory):
     case = case_factory()
     response = case.request("POST", "/runs", _submission())
@@ -206,9 +322,11 @@ class _Response(object):
 
 
 class _Upstream(object):
-    def __init__(self, computing_release_id, fail_at):
+    def __init__(self, computing_release_id, fail_at, hang_at, reject_status):
         self.computing_release_id = computing_release_id
         self.fail_at = fail_at
+        self.hang_at = hang_at
+        self.reject_status = reject_status
         self.model_ids = [FIXTURE["configuration"]["model_id"]]
         self.calls = []
         self._scores = 0
@@ -270,8 +388,14 @@ def _mock_handler(upstream):
                     return
                 index = upstream._scores
                 upstream._scores += 1
+                if upstream.reject_status is not None and index == 0:
+                    self._send(upstream.reject_status, {"error": "rejected"})
+                    return
                 if upstream.fail_at is not None and index == upstream.fail_at:
                     self._send(503, {"error": "origin_unavailable"})
+                    return
+                if upstream.hang_at is not None and index == upstream.hang_at:
+                    self._stall()
                     return
                 self._send(
                     200,
@@ -284,6 +408,18 @@ def _mock_handler(upstream):
                 )
                 return
             self._send(404, {"error": "route_not_found"})
+
+        def _stall(self):
+            raw = b"{}"
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            time.sleep(1.5)
+            try:
+                self.wfile.write(raw)
+            except Exception:
+                return
 
         def _send(self, status, payload):
             raw = json.dumps(payload).encode("utf-8")
@@ -320,11 +456,11 @@ class _Case(object):
             thread.join(timeout=5)
 
 
-def _build_case(computing_release_id, fail_at):
-    upstream = _Upstream(computing_release_id, fail_at)
+def _build_case(computing_release_id, fail_at, hang_at, reject_status, timeout):
+    upstream = _Upstream(computing_release_id, fail_at, hang_at, reject_status)
     mock_server, mock_thread = _serve(_mock_handler(upstream))
     host, port = mock_server.server_address
-    scorer = ApiScorer(API_KEY, base_url="http://%s:%s" % (host, port), timeout=5)
+    scorer = ApiScorer(API_KEY, base_url="http://%s:%s" % (host, port), timeout=timeout)
     app_server, app_thread = _serve(handler_for(RunService(scorer)))
     app_host, app_port = app_server.server_address
     return _Case(
@@ -338,8 +474,20 @@ def _build_case(computing_release_id, fail_at):
 def case_factory():
     cases = []
 
-    def make(computing_release_id=None, fail_at=None):
-        case = _build_case(computing_release_id or FIXTURE["release_id"], fail_at)
+    def make(
+        computing_release_id=None,
+        fail_at=None,
+        hang_at=None,
+        reject_status=None,
+        timeout=5,
+    ):
+        case = _build_case(
+            computing_release_id or FIXTURE["release_id"],
+            fail_at,
+            hang_at,
+            reject_status,
+            timeout,
+        )
         cases.append(case)
         return case
 
@@ -368,6 +516,12 @@ def _request(base, method, path, payload):
         status = error.code
         headers = dict(error.headers)
     return _Response(status, headers, json.loads(raw.decode("utf-8")))
+
+
+def _score_calls(case):
+    return len(
+        [call for call in case.upstream.calls if call["path"] == "/v1/score-book"]
+    )
 
 
 def _submission():

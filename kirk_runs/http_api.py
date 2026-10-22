@@ -86,8 +86,17 @@ def handler_for(service):
             except ValueError:
                 raise RunsError("invalid_json", 400)
             if length < 0 or length > MAX_BODY_BYTES:
+                self._drain(length)
                 raise RunsError("request_too_large", 413)
             return self.rfile.read(length)
+
+        def _drain(self, length):
+            remaining = min(length, MAX_BODY_BYTES + 65536)
+            while remaining > 0:
+                chunk = self.rfile.read(min(65536, remaining))
+                if not chunk:
+                    break
+                remaining -= len(chunk)
 
         def _send(self, status, payload):
             raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
