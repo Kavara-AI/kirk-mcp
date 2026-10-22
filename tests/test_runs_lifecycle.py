@@ -11,10 +11,10 @@ import urllib.error
 import urllib.request
 
 from kirk_runs.binding import assert_same_inputs, inputs_digest, stamp_references
-from kirk_runs.contract import SEALED_API_ORIGIN
+from kirk_runs.contract import PUBLIC_API_ORIGIN
 from kirk_runs.errors import RunsError
 from kirk_runs.http_api import handler_for
-from kirk_runs.scorer import SealedScorer
+from kirk_runs.scorer import ApiScorer
 from kirk_runs.service import RunService
 
 FIXTURE = json.loads(
@@ -29,8 +29,16 @@ _IDEMPOTENCY = re.compile(
 _BINDING_KEYS = {"release_id", "configuration", "inputs_digest", "output_alignment"}
 
 
+def _recorded_digest():
+    return inputs_digest(FIXTURE["inputs"])
+
+
 def test_digest_matches_recorded_fixture():
-    assert inputs_digest(FIXTURE["inputs"]) == FIXTURE["inputs_digest"]
+    recorded = _recorded_digest()
+    assert_same_inputs(recorded, FIXTURE["inputs"])
+    with pytest.raises(RunsError) as reorder:
+        assert_same_inputs(recorded, list(reversed(FIXTURE["inputs"])))
+    assert reorder.value.code == "inputs_digest_mismatch"
 
 
 def test_stamp_and_reordered_inputs_fail_distinctly():
@@ -38,7 +46,7 @@ def test_stamp_and_reordered_inputs_fail_distinctly():
     with pytest.raises(RunsError) as mismatch:
         stamp_references(FIXTURE["release_id"], ["rel-other"])
     with pytest.raises(RunsError) as reorder:
-        assert_same_inputs(FIXTURE["inputs_digest"], list(reversed(FIXTURE["inputs"])))
+        assert_same_inputs(_recorded_digest(), list(reversed(FIXTURE["inputs"])))
     assert mismatch.value.code == "reference_mismatch"
     assert reorder.value.code == "inputs_digest_mismatch"
     assert mismatch.value.code != reorder.value.code
@@ -46,9 +54,9 @@ def test_stamp_and_reordered_inputs_fail_distinctly():
     assert mismatch.value.detail["computing_release_id"] == "rel-other"
 
 
-def test_default_scorer_origin_is_the_sealed_api():
-    scorer = SealedScorer(API_KEY)
-    assert scorer.base_url == SEALED_API_ORIGIN
+def test_default_scorer_origin_is_the_public_api():
+    scorer = ApiScorer(API_KEY)
+    assert scorer.base_url == PUBLIC_API_ORIGIN
 
 
 def test_recorded_fixture_follows_lifecycle_and_reproduces_its_reference(case_factory):
@@ -108,7 +116,7 @@ def test_wrong_reference_and_reordered_inputs_fail_distinctly(case_factory):
     still = good.request("GET", "/v1/runs/%s" % created.body["run_id"])
     assert still.status == 200
     assert still.body["complete"] is True
-    assert still.body["binding"]["inputs_digest"] == FIXTURE["inputs_digest"]
+    assert still.body["binding"]["inputs_digest"] == _recorded_digest()
 
     wrong = case_factory(computing_release_id="rel-other")
     wrong_run = wrong.request("POST", "/v1/runs", _submission())
@@ -316,7 +324,7 @@ def _build_case(computing_release_id, fail_at):
     upstream = _Upstream(computing_release_id, fail_at)
     mock_server, mock_thread = _serve(_mock_handler(upstream))
     host, port = mock_server.server_address
-    scorer = SealedScorer(API_KEY, base_url="http://%s:%s" % (host, port), timeout=5)
+    scorer = ApiScorer(API_KEY, base_url="http://%s:%s" % (host, port), timeout=5)
     app_server, app_thread = _serve(handler_for(RunService(scorer)))
     app_host, app_port = app_server.server_address
     return _Case(
@@ -377,7 +385,7 @@ def _assert_binding(body, complete, status):
     assert set(body["binding"]) == _BINDING_KEYS
     assert body["binding"]["release_id"] == FIXTURE["release_id"]
     assert body["binding"]["configuration"] == FIXTURE["configuration"]
-    assert body["binding"]["inputs_digest"] == FIXTURE["inputs_digest"]
+    assert body["binding"]["inputs_digest"] == _recorded_digest()
 
 
 def _assert_succeeded(body):

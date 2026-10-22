@@ -1,7 +1,6 @@
-"""Call the sealed HTTP API for catalog lookup and scoring.
+"""Call the public HTTP API for catalog lookup and scoring.
 
-The published model package scores through a local core, which this service
-does not import. Scoring here is only ``POST`` of the public score route.
+Scoring here is only ``POST`` of the public score route.
 """
 
 import json
@@ -13,7 +12,7 @@ from kirk_runs.contract import (
     CATALOG_PATH,
     MAX_BODY_BYTES,
     SCORE_PATH,
-    SEALED_API_ORIGIN,
+    PUBLIC_API_ORIGIN,
 )
 from kirk_runs.errors import RunsError
 
@@ -24,8 +23,8 @@ class ScoreResult(object):
         self.value = value
 
 
-class SealedScorer(object):
-    def __init__(self, api_key, base_url=SEALED_API_ORIGIN, timeout=40):
+class ApiScorer(object):
+    def __init__(self, api_key, base_url=PUBLIC_API_ORIGIN, timeout=40):
         if not isinstance(api_key, str) or not api_key:
             raise ValueError("api_key is required")
         self.api_key = api_key

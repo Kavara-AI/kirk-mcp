@@ -12,7 +12,7 @@ ACCEPTED_LOADER = frozenset({"inline"})
 MODEL_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$")
 RELEASE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
-SEALED_API_ORIGIN = "https://api.kavara.ai"
+PUBLIC_API_ORIGIN = "https://api.kavara.ai"
 CATALOG_PATH = "/v1/models"
 SCORE_PATH = "/v1/score-book"
 
