@@ -1,0 +1,18 @@
+{
+  "contract_version": "v1",
+  "release_id": "rel-fixture-alpha",
+  "configuration": {
+    "cadence": "ordered",
+    "loader": "inline",
+    "model_id": "model-alpha"
+  },
+  "inputs": [
+    {"marker": "one"},
+    {"marker": "two"}
+  ],
+  "inputs_digest": "4c8ac3b1b74760a285c32fccd45a8b7cee91615ea843c7f247a6b0b40c2dabb1",
+  "outputs": [
+    {"token": "out-1"},
+    {"token": "out-2"}
+  ]
+}
