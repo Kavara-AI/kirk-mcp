@@ -341,7 +341,10 @@ def test_surrogate_inputs_and_nonexistent_guard_cleanup():
     with pytest.raises(RunsError) as refused:
         service.submit(bad_submit)
     assert refused.value.http_status == 422
-    assert refused.value.public_error() == {"code": "binding_refused", "field": "inputs"}
+    assert refused.value.public_error() == {
+        "code": "binding_refused",
+        "field": "inputs",
+    }
 
     with pytest.raises(RunsError) as missing:
         service.execute("00000000-0000-4000-8000-000000000000")
@@ -359,7 +362,9 @@ def test_score_result_requires_finite_output():
     assert null_output.value.code == "unbound_result"
 
     with pytest.raises(RunsError) as nan_output:
-        _score_result({"release_id": FIXTURE["release_id"], "output": {"score": float("nan")}})
+        _score_result(
+            {"release_id": FIXTURE["release_id"], "output": {"score": float("nan")}}
+        )
     assert nan_output.value.code == "unbound_result"
 
 
