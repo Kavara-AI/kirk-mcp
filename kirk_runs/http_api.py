@@ -2,10 +2,13 @@
 
 import json
 import re
+import socket
 from http.server import BaseHTTPRequestHandler
 
 from kirk_runs.contract import CONTRACT_VERSION, MAX_BODY_BYTES
 from kirk_runs.errors import RunsError
+
+REQUEST_BODY_TIMEOUT = 30
 
 _RUN_ID = r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
 _RUN_PATH = re.compile(r"^/v1/runs/(" + _RUN_ID + r")(?:/(execution|stamp))?$")
@@ -86,17 +89,19 @@ def handler_for(service):
             except ValueError:
                 raise RunsError("invalid_json", 400)
             if length < 0 or length > MAX_BODY_BYTES:
-                self._drain(length)
+                self.close_connection = True
                 raise RunsError("request_too_large", 413)
-            return self.rfile.read(length)
-
-        def _drain(self, length):
-            remaining = min(length, MAX_BODY_BYTES + 65536)
-            while remaining > 0:
-                chunk = self.rfile.read(min(65536, remaining))
-                if not chunk:
-                    break
-                remaining -= len(chunk)
+            previous_timeout = self.connection.gettimeout()
+            if previous_timeout is None:
+                self.connection.settimeout(REQUEST_BODY_TIMEOUT)
+            try:
+                return self.rfile.read(length)
+            except socket.timeout:
+                self.close_connection = True
+                raise RunsError("invalid_json", 400)
+            finally:
+                if previous_timeout is None:
+                    self.connection.settimeout(None)
 
         def _send(self, status, payload):
             raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode(
@@ -107,6 +112,8 @@ def handler_for(service):
             self.send_header("Content-Length", str(len(raw)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Contract-Version", CONTRACT_VERSION)
+            self.send_header("Connection", "close")
+            self.close_connection = True
             self.end_headers()
             self.wfile.write(raw)
 

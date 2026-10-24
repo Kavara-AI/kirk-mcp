@@ -15,7 +15,7 @@ from kirk_runs.binding import assert_same_inputs, inputs_digest, stamp_reference
 from kirk_runs.contract import MAX_BODY_BYTES, PUBLIC_API_ORIGIN
 from kirk_runs.errors import RunsError
 from kirk_runs.http_api import handler_for
-from kirk_runs.scorer import ApiScorer
+from kirk_runs.scorer import ApiScorer, _score_result
 from kirk_runs.service import RunService
 
 FIXTURE = json.loads(
@@ -312,6 +312,55 @@ def test_unversioned_route_is_refused(case_factory):
     assert response.body["contract_version"] == "v1"
     assert response.headers["X-Contract-Version"] == "v1"
     assert case.upstream.calls == []
+
+
+def test_unhashable_cadence_and_loader_return_422(case_factory):
+    case = case_factory()
+    bad_cadence = _submission()
+    bad_cadence["configuration"] = dict(bad_cadence["configuration"], cadence=[])
+    refused = case.request("POST", "/v1/runs", bad_cadence)
+    assert refused.status == 422
+    assert refused.body["error"] == {"code": "binding_refused", "field": "cadence"}
+
+    bad_loader = _submission()
+    bad_loader["configuration"] = dict(bad_loader["configuration"], loader={})
+    refused = case.request("POST", "/v1/runs", bad_loader)
+    assert refused.status == 422
+    assert refused.body["error"] == {"code": "binding_refused", "field": "loader"}
+
+
+def test_surrogate_inputs_and_nonexistent_guard_cleanup():
+    recorded = _recorded_digest()
+    with pytest.raises(RunsError) as bad_digest:
+        assert_same_inputs(recorded, [{"marker": "\ud800"}])
+    assert bad_digest.value.code == "inputs_digest_mismatch"
+
+    service = RunService(ApiScorer(API_KEY))
+    bad_submit = _submission()
+    bad_submit["inputs"] = [{"\ud800": "x"}]
+    with pytest.raises(RunsError) as refused:
+        service.submit(bad_submit)
+    assert refused.value.http_status == 422
+    assert refused.value.public_error() == {"code": "binding_refused", "field": "inputs"}
+
+    with pytest.raises(RunsError) as missing:
+        service.execute("00000000-0000-4000-8000-000000000000")
+    assert missing.value.http_status == 404
+    assert service._guards == {}
+
+
+def test_score_result_requires_finite_output():
+    with pytest.raises(RunsError) as missing_output:
+        _score_result({"release_id": FIXTURE["release_id"]})
+    assert missing_output.value.code == "unbound_result"
+
+    with pytest.raises(RunsError) as null_output:
+        _score_result({"release_id": FIXTURE["release_id"], "output": None})
+    assert null_output.value.code == "unbound_result"
+
+    with pytest.raises(RunsError) as nan_output:
+        _score_result({"release_id": FIXTURE["release_id"], "output": {"score": float("nan")}})
+    assert nan_output.value.code == "unbound_result"
 
 
 class _Response(object):

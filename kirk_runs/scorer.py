@@ -4,6 +4,7 @@ Scoring here is only ``POST`` of the public score route.
 """
 
 import json
+import math
 import uuid
 import urllib.error
 import urllib.request
@@ -67,7 +68,7 @@ class ApiScorer(object):
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                raw = response.read()
+                raw = response.read(MAX_BODY_BYTES + 1)
                 status = response.status
         except urllib.error.HTTPError as error:
             _discard(error)
@@ -82,6 +83,8 @@ class ApiScorer(object):
             raise RunsError("origin_unavailable", 502)
         if status != 200:
             raise RunsError("score_rejected", 502, {"upstream_status": status})
+        if len(raw) > MAX_BODY_BYTES:
+            raise RunsError("unbound_result", 502)
         try:
             payload = json.loads(raw.decode("utf-8"))
         except (UnicodeError, json.JSONDecodeError):
@@ -97,7 +100,7 @@ class ApiScorer(object):
 
 def _discard(error):
     try:
-        error.read()
+        error.read(MAX_BODY_BYTES)
     except Exception:
         return
 
@@ -126,14 +129,18 @@ def _score_result(result):
     release_id = result.get("release_id")
     if not isinstance(release_id, str) or not release_id:
         raise RunsError("unbound_result", 502)
-    value = result.get("output", None)
-    if "output" in result and not _json_value(value):
+    if "output" not in result:
         raise RunsError("unbound_result", 502)
-    return ScoreResult(release_id, value if "output" in result else None)
+    value = result["output"]
+    if value is None or not _json_value(value):
+        raise RunsError("unbound_result", 502)
+    return ScoreResult(release_id, value)
 
 
 def _json_value(value):
-    if value is None or isinstance(value, (str, int, float, bool)):
+    if isinstance(value, float):
+        return math.isfinite(value)
+    if value is None or isinstance(value, (str, int, bool)):
         return True
     if isinstance(value, list):
         return all(_json_value(item) for item in value)

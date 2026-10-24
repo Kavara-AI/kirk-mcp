@@ -41,5 +41,11 @@ def stamp_references(probed_release_id, computing_release_ids):
 
 def assert_same_inputs(expected_digest, inputs):
     """Refuse when presented inputs are not the consumed order."""
-    if not isinstance(inputs, list) or inputs_digest(inputs) != expected_digest:
+    if not isinstance(inputs, list):
+        raise RunsError("inputs_digest_mismatch", 422)
+    try:
+        digest = inputs_digest(inputs)
+    except UnicodeError:
+        raise RunsError("inputs_digest_mismatch", 422)
+    if digest != expected_digest:
         raise RunsError("inputs_digest_mismatch", 422)

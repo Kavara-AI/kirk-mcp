@@ -92,6 +92,7 @@ class RunService(object):
 
     def _guard(self, run_id):
         with self._lock:
+            self._require(run_id)
             guard = self._guards.get(run_id)
             if guard is None:
                 guard = threading.Lock()
@@ -143,6 +144,7 @@ class RunService(object):
                 raise _stored_error(run)
             if "inputs" in body:
                 try:
+                    _reject_nonfinite(body["inputs"], "inputs")
                     assert_same_inputs(run["inputs_digest"], body["inputs"])
                 except RunsError as exc:
                     raise RunsError(
@@ -210,9 +212,9 @@ def _admit_configuration(payload):
     cadence = payload["cadence"]
     loader = payload["loader"]
     model_id = payload["model_id"]
-    if cadence not in ACCEPTED_CADENCE:
+    if not isinstance(cadence, str) or cadence not in ACCEPTED_CADENCE:
         raise RunsError("binding_refused", 422, {"field": "cadence"})
-    if loader not in ACCEPTED_LOADER:
+    if not isinstance(loader, str) or loader not in ACCEPTED_LOADER:
         raise RunsError("binding_refused", 422, {"field": "loader"})
     if not isinstance(model_id, str) or MODEL_ID_PATTERN.fullmatch(model_id) is None:
         raise RunsError("binding_refused", 422, {"field": "model_id"})
@@ -235,21 +237,27 @@ def _public_view(run):
         "complete": reveal,
         "binding": {
             "release_id": run["release_id"],
-            "configuration": run["configuration"],
+            "configuration": copy.deepcopy(run["configuration"]),
             "inputs_digest": run["inputs_digest"],
-            "output_alignment": run["alignment"] if reveal else None,
+            "output_alignment": copy.deepcopy(run["alignment"]) if reveal else None,
         },
     }
     if run["error"] and not reveal:
-        body["error"] = run["error"]
+        body["error"] = copy.deepcopy(run["error"])
     return body
 
 
 def _reject_nonfinite(value, field):
     if isinstance(value, float) and not math.isfinite(value):
         raise RunsError("binding_refused", 422, {"field": field})
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raise RunsError("binding_refused", 422, {"field": field})
     if isinstance(value, dict):
-        for item in value.values():
+        for key, item in value.items():
+            _reject_nonfinite(key, field)
             _reject_nonfinite(item, field)
     elif isinstance(value, list):
         for item in value:
@@ -262,10 +270,10 @@ def _stamp_refusal(run, error):
         "run_id": run["run_id"],
         "status": run["status"],
         "complete": False,
-        "error": error,
+        "error": copy.deepcopy(error),
         "binding": {
             "release_id": run["release_id"],
-            "configuration": run["configuration"],
+            "configuration": copy.deepcopy(run["configuration"]),
             "inputs_digest": run["inputs_digest"],
             "output_alignment": None,
         },
