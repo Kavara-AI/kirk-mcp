@@ -6,13 +6,13 @@
 
 **Borg** is the second algorithm on Ulysses. Radio-frequency spectrum anomaly detection.
 
-This repository is the public documentation and configuration surface for the hosted `kirk-mcp` MCP server at `kirk-mcp.kavara.ai` — where Kirk is exposed as a set of MCP tools for validation and discovery use cases.
-
 > **Using the Kirk API from Python, or setting it up with an AI agent?** Use
 > **[Kavara-AI/kirk-kit](https://github.com/Kavara-AI/kirk-kit)**: the released kit for `https://api.kavara.ai`,
 > with a key from [kavara.ai/login](https://kavara.ai/login). Agents: follow its
 > [`AGENTS.md`](https://github.com/Kavara-AI/kirk-kit/blob/main/AGENTS.md). This repository documents the separate
 > MCP server only.
+
+This repository is the public documentation and configuration surface for the hosted `kirk-mcp` MCP server at `kirk-mcp.kavara.ai` — where Kirk is exposed as a set of MCP tools for validation and discovery use cases.
 
 > **The Kalman filter for the non-Gaussian, non-stationary world.**
 
