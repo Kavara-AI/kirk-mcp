@@ -89,8 +89,8 @@ claude mcp add --transport http kirk https://kirk-mcp.kavara.ai/mcp \
   -H "Authorization: Bearer k_YOUR_PERSONAL_KEY"
 ```
 
-**First 100 credits are free per new account.** Sign in at [kavara.ai](https://kavara.ai/login)
-to create a key.
+Sign in at [kavara.ai](https://kavara.ai/login) to create a key. Scoring tools use credits;
+`kirk_billing_show` shows your balance.
 
 ### Check it worked
 
@@ -205,7 +205,7 @@ Kirk in-process throughput on production Granite Rapids silicon (2× Xeon 6972P,
 
 Production speed lives in-process. Four delivery paths:
 
-- **Path A — MCP API (this endpoint)**. Discovery, validation, and pay-as-you-go per-call. First 100 credits free.
+- **Path A — MCP API (this endpoint)**. Discovery, validation, and pay-as-you-go per-call.
 - **Path B — Sealed wheel license**. `pip install kirk_cascade + kirk_rs_edge`. In-process, unmetered per-call, deterministic against sealed sha.
 - **Path C — OpenShift Operator**. Kavara-shipped Operator on the customer's own cluster. Enterprise. Trustee attestation.
 - **Path D — AWS Nitro Enclave AMI**. Currently shipping to enterprise customers via AWS Marketplace private offers. PCR0-attested.
@@ -266,7 +266,6 @@ Do NOT use this MCP endpoint when the workload matches:
 
 ## Cost model
 
-- **First 100 credits free per new account.** Automatic grant on first authenticated call.
 - **Beyond free tier**: pay-as-you-go via prepaid credit packs (starter / scale / enterprise). Call `kirk_billing_checkout` from your agent to get a Stripe Checkout URL.
 - **Cost transparency**: every response to an LLM-driven caller includes a `_cost` envelope with per-call credits, session accumulation, and remaining balance.
 - **Anti-anger discipline**: if your agent tries a bulk workload naively, the server steers it to `kirk_bulk_howto` — which returns a Python client that runs at zero LLM-token cost per iteration.
