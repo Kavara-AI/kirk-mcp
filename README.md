@@ -6,6 +6,12 @@
 
 **Borg** is the second algorithm on Ulysses. Radio-frequency spectrum anomaly detection.
 
+> **Using the Kirk API from Python, or setting it up with an AI agent?** Use
+> **[Kavara-AI/kirk-kit](https://github.com/Kavara-AI/kirk-kit)**: the released kit for `https://api.kavara.ai`,
+> with a key from [kavara.ai/login](https://kavara.ai/login). Agents: follow its
+> [`AGENTS.md`](https://github.com/Kavara-AI/kirk-kit/blob/main/AGENTS.md). This repository documents the separate
+> MCP server only.
+
 This repository is the public documentation and configuration surface for the hosted `kirk-mcp` MCP server at `kirk-mcp.kavara.ai` — where Kirk is exposed as a set of MCP tools for validation and discovery use cases.
 
 > **The Kalman filter for the non-Gaussian, non-stationary world.**
@@ -83,8 +89,8 @@ claude mcp add --transport http kirk https://kirk-mcp.kavara.ai/mcp \
   -H "Authorization: Bearer k_YOUR_PERSONAL_KEY"
 ```
 
-**First 100 inference units are free per new account.** Contact `sales@kavara.ai`
-to be issued a credential.
+**First 100 credits are free per new account.** Sign in at [kavara.ai](https://kavara.ai/login)
+to create a key.
 
 ### Check it worked
 
@@ -195,11 +201,11 @@ Fetch the full FY24 case study machine-readably via the `kirk://case-studies/fy2
 
 ## In-process throughput (measured separately)
 
-Kirk in-process throughput on production Granite Rapids silicon (2× Xeon 6972P, one pinned core, warm engine): **823 μs/book / 1,215 books-per-second/core**, bit-identical against the Sapphire Rapids reference fleet. Full-box extrapolation on the 2×192-core node: ~237,000 IU/second. Benchmark workload is synthetic 20×20 complex128 books — same per-call compute shape as thermometer-rendered market data, so the figure carries to production. MCP API adds millisecond-scale round-trip and is a validation and discovery surface, not a latency-critical production path.
+Kirk in-process throughput on production Granite Rapids silicon (2× Xeon 6972P, one pinned core, warm engine): **823 μs/book / 1,215 books-per-second/core**, bit-identical against the Sapphire Rapids reference fleet. Full-box extrapolation on the 2×192-core node: ~237,000 credits/second. Benchmark workload is synthetic 20×20 complex128 books — same per-call compute shape as thermometer-rendered market data, so the figure carries to production. MCP API adds millisecond-scale round-trip and is a validation and discovery surface, not a latency-critical production path.
 
 Production speed lives in-process. Four delivery paths:
 
-- **Path A — MCP API (this endpoint)**. Discovery, validation, and pay-as-you-go per-call. First 100 IU free.
+- **Path A — MCP API (this endpoint)**. Discovery, validation, and pay-as-you-go per-call. First 100 credits free.
 - **Path B — Sealed wheel license**. `pip install kirk_cascade + kirk_rs_edge`. In-process, unmetered per-call, deterministic against sealed sha.
 - **Path C — OpenShift Operator**. Kavara-shipped Operator on the customer's own cluster. Enterprise. Trustee attestation.
 - **Path D — AWS Nitro Enclave AMI**. Currently shipping to enterprise customers via AWS Marketplace private offers. PCR0-attested.
@@ -226,7 +232,7 @@ Production speed lives in-process. Four delivery paths:
 - `kirk_sweep_test1_day(day, override)` — Score one day of the internal Test-1 QQQ L2 corpus at a caller-supplied override. Research-grade endpoint.
 
 **Billing / platform**
-- `kirk_billing_show()` — Return account balance, IU remaining, USD equivalent at list, frozen flag, recent ledger.
+- `kirk_billing_show()` — Return account balance, credits remaining, USD equivalent at list, frozen flag, recent ledger.
 - `kirk_billing_checkout(pack)` — Stripe Checkout URL for buying credit packs (starter / scale / enterprise).
 - `kirk_billing_usage(days)` — Historical inference consumption over N days.
 
@@ -260,9 +266,9 @@ Do NOT use this MCP endpoint when the workload matches:
 
 ## Cost model
 
-- **First 100 inference units free per new account.** Automatic grant on first authenticated call.
+- **First 100 credits free per new account.** Automatic grant on first authenticated call.
 - **Beyond free tier**: pay-as-you-go via prepaid credit packs (starter / scale / enterprise). Call `kirk_billing_checkout` from your agent to get a Stripe Checkout URL.
-- **Cost transparency**: every response to an LLM-driven caller includes a `_cost` envelope with per-call IU, session accumulation, and remaining balance.
+- **Cost transparency**: every response to an LLM-driven caller includes a `_cost` envelope with per-call credits, session accumulation, and remaining balance.
 - **Anti-anger discipline**: if your agent tries a bulk workload naively, the server steers it to `kirk_bulk_howto` — which returns a Python client that runs at zero LLM-token cost per iteration.
 
 Direct Python-client calls (via `kirk_bulk_howto`) are metered identically to MCP calls but incur no LLM token cost — a customer running 60,000 book scores via the Python client pays only for compute, not for orchestration.
@@ -309,7 +315,7 @@ Kavara ships the Ulysses primitive and the Kirk and Borg algorithms through four
 
 - Homepage: `https://kavara.ai`
 - Commercial: `sales@kavara.ai`
-- Support: `sales@kavara.ai`
+- Support: `support@kavara.ai`
 
 ## License
 
