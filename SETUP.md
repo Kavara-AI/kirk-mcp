@@ -10,8 +10,8 @@
 Chat, or whatever assistant you use.** It will work out which client you are on and
 configure it. You do not need to read the rest of this repository first.
 
-You will need a key: sign in at [kavara.ai](https://kavara.ai/login) and create one. First 100 credits
-are free per new account.
+You will need a key: sign in at [kavara.ai](https://kavara.ai/login) and create one. Scoring
+tools use credits; `kirk_billing_show` shows your balance.
 
 ---
 
