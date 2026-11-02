@@ -10,8 +10,8 @@
 Chat, or whatever assistant you use.** It will work out which client you are on and
 configure it. You do not need to read the rest of this repository first.
 
-You will need a credential from Kavara — `sales@kavara.ai`. First 100 inference
-units are free per new account.
+You will need a key: sign in at [kavara.ai](https://kavara.ai/login) and create one. First 100 credits
+are free per new account.
 
 ---
 
@@ -75,8 +75,8 @@ IF SOMETHING FAILS
 COST, SO YOU DO NOT SPEND MY BALANCE BY ACCIDENT
   Free: kirk_verify_engine, kirk_list_models, kirk_render_book,
         kirk_bulk_howto, kirk_billing_show, kirk_billing_usage.
-  Metered: kirk_score_book 1 IU per call; kirk_score_book_batch 1 IU per 50
-        books; kirk_score_l2_book 1 IU per call.
+  Metered: kirk_score_book 1 credit per call; kirk_score_book_batch 1 credit per 50
+        books; kirk_score_l2_book 1 credit per call.
   Every response carries a _cost block. Do not loop the metered tools from a
   chat: above roughly 200 books call kirk_bulk_howto, which returns a
   self-contained Python client that scores at zero model tokens per book.
