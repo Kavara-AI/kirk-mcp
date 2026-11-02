@@ -8,6 +8,12 @@
 
 This repository is the public documentation and configuration surface for the hosted `kirk-mcp` MCP server at `kirk-mcp.kavara.ai` — where Kirk is exposed as a set of MCP tools for validation and discovery use cases.
 
+> **Using the Kirk API from Python, or setting it up with an AI agent?** Use
+> **[Kavara-AI/kirk-kit](https://github.com/Kavara-AI/kirk-kit)**: the released kit for `https://api.kavara.ai`,
+> with a key from [kavara.ai/login](https://kavara.ai/login). Agents: follow its
+> [`AGENTS.md`](https://github.com/Kavara-AI/kirk-kit/blob/main/AGENTS.md). This repository documents the separate
+> MCP server only.
+
 > **The Kalman filter for the non-Gaussian, non-stationary world.**
 
 The Kalman filter is a special case: linear, Gaussian. Ulysses closes the full-joint intractability that stopped the Boltzmann-machine family, in polynomial time, and Kirk applies that primitive to non-stationary streams. Not a foundation model — the Kalman filter's category, not GPT's. The IP is the math.

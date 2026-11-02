@@ -1,5 +1,11 @@
 # Set up Kirk in your AI assistant or IDE
 
+> **Using the Kirk API from Python, or setting it up with an AI agent?** Use
+> **[Kavara-AI/kirk-kit](https://github.com/Kavara-AI/kirk-kit)**: the released kit for `https://api.kavara.ai`,
+> with a key from [kavara.ai/login](https://kavara.ai/login). Agents: follow its
+> [`AGENTS.md`](https://github.com/Kavara-AI/kirk-kit/blob/main/AGENTS.md). This repository documents the separate
+> MCP server only.
+
 **Copy everything in the box below and paste it into Grok, Claude, Cursor, Copilot
 Chat, or whatever assistant you use.** It will work out which client you are on and
 configure it. You do not need to read the rest of this repository first.
