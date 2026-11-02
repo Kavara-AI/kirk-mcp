@@ -201,7 +201,7 @@ Fetch the full FY24 case study machine-readably via the `kirk://case-studies/fy2
 
 ## In-process throughput (measured separately)
 
-Kirk in-process throughput on production Granite Rapids silicon (2× Xeon 6972P, one pinned core, warm engine): **823 μs/book / 1,215 books-per-second/core**, bit-identical against the Sapphire Rapids reference fleet. Full-box extrapolation on the 2×192-core node: ~237,000 IU/second. Benchmark workload is synthetic 20×20 complex128 books — same per-call compute shape as thermometer-rendered market data, so the figure carries to production. MCP API adds millisecond-scale round-trip and is a validation and discovery surface, not a latency-critical production path.
+Kirk in-process throughput on production Granite Rapids silicon (2× Xeon 6972P, one pinned core, warm engine): **823 μs/book / 1,215 books-per-second/core**, bit-identical against the Sapphire Rapids reference fleet. Full-box extrapolation on the 2×192-core node: ~237,000 credits/second. Benchmark workload is synthetic 20×20 complex128 books — same per-call compute shape as thermometer-rendered market data, so the figure carries to production. MCP API adds millisecond-scale round-trip and is a validation and discovery surface, not a latency-critical production path.
 
 Production speed lives in-process. Four delivery paths:
 
